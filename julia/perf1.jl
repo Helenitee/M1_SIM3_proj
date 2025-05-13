@@ -22,7 +22,7 @@ begin
         label = "", 
         marker = :point,
         lw = 2,
-        yaxis = ("GFLOP/s", font(10)),
+        yaxis = ("Arithmetic Performance (GFLOP/s)", font(10)),
         xaxis = ("Polynomial Degree", font(10)),
         xticks=(1:1:7),
         minorgrid = true)
@@ -36,7 +36,7 @@ begin
         label = "",
         marker = :point,
         lw = 2,
-        yaxis = ("Time", font(10)),
+        yaxis = ("Time (s)", font(10)),
         xaxis = ("Polynomial Degree", font(10)),
         xticks=(1:1:7),
         minorgrid = true)
