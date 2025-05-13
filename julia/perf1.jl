@@ -18,9 +18,9 @@ GFLP   = @view data[:,6]
 
 begin
     plot(mesh,GFLP,
-        title = "Comparison of the Arithmetic Performances as functions of the Polynomial Degree",
+        title = "Arithmetic Performances as functions of the Polynomial Degree",
         titlefont=font(10),
-        label = "Unoptimized", 
+        label = "", 
         marker = :point,
         lw = 2,
         yaxis = ("Arithmetic Performance (GFLOP/s)", font(10)),
