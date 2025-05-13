@@ -17,34 +17,39 @@ GFLP   = @view data[:,6]
 
 begin
     plot(mesh,GFLP,
+        title = "Arithmetic Performance as a function of the Polynomial Degree",
+        titlefont=font(10),
         label = "GFLOP", 
         marker = :point,
         lw = 2,
-        yaxis = ("GFLOP", font(10)),
-        xaxis = ("polyomial degree", font(10)),
+        yaxis = ("GFLOP/s", font(10)),
+        xaxis = ("Polynomial Degree", font(10)),
         xticks=(1:1:7),
         minorgrid = true)
 end
 savefig("Desktop/SIM3/Projet/perf1GFLOP.pdf")
 
 begin
-    plot(mesh,Ttot, 
-        label = "total time",
+    plot(mesh,Ttot,
+        title = "Total runtime as a function of the Polynomial Degree",
+        titlefont=font(10),
         marker = :point,
         lw = 2,
-        yaxis = ("time", font(10)),
-        xaxis = ("polyomial degree", font(10)),
+        yaxis = ("Time", font(10)),
+        xaxis = ("Polynomial Degree", font(10)),
         xticks=(1:1:7),
         minorgrid = true)
 end
 savefig("Desktop/SIM3/Projet/perf1Ttot.pdf")
 begin
     plot(mesh,Tmoy, 
-        label = "mean time",
+        title = "Average runtime per iteration as a function of the Polynomial Degree",
+        titlefont=font(10),
+        label = "",
         marker = :point,
         lw = 2,
-        yaxis = ("time", font(10)),
-        xaxis = ("polyomial degree", font(10)),
+        yaxis = ("Time (s)", font(10)),
+        xaxis = ("Polynomial Degree", font(10)),
         xticks=(1:1:7),
         minorgrid = true)
 end
