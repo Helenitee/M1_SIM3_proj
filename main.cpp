@@ -1,8 +1,13 @@
+// Compilation : make
 #include "Connectivity.hpp"
 #include "Gmsh.hpp"
 #include "Nodes.hpp"
 #include "Numerics.hpp"
 #include "Tools.hpp"
+
+#include <iostream>
+#include <iomanip>  // needed for std::setprecision
+#include <omp.h> // OpenMP
 
 int main(int argc, char **argv) {
 
@@ -146,7 +151,7 @@ int main(int argc, char **argv) {
     }
   }
   double CFL = 0.75;                 // CFL
-  //double CFL = 1;
+  // double CFL = 1;                 // CFL
   dt *= CFL;                         // Time step
   int Nsteps = ceil(FinalTime / dt); // Number of global time steps
 
@@ -185,14 +190,15 @@ int main(int argc, char **argv) {
   // ======================================================================
   // 2) RUN
   // ======================================================================
+  omp_set_num_threads(4);
 
-
-  double time_total_begin = dsecnd();
-  double time = 0;
-  double average = 0;
+  double duration_tot = 0.0;
+  double duration_moy = 0.0;
+  cout << " Nsteps DOF Ttot Tmoy GFLOPs" << endl;
   // Global time iteration
   for (int nGlo = 0; nGlo < Nsteps; ++nGlo) {
-    double time_begin = dsecnd();
+    int NbOp = 0; // compteur de FLOP par itération
+    double timeBegin = dsecnd(); // time 
     double runTime = nGlo * dt; // Time at the beginning of the step
 
     // Local time iteration
@@ -200,88 +206,97 @@ int main(int argc, char **argv) {
       double a = rk4a[nLoc];
       double b = rk4b[nLoc];
 
-      // ======================== (1) UPDATE RHS
+      #pragma omp parallel for schedule(static)
 
-      for (int k = 0; k < K; ++k) {
+      // ======================== (1) UPDATE RHS
+      for (int k = 0; k < K; ++k) { // boucle sur les élements du maillage
 
         double c = _c[k];
         double rho = _rho[k];
 
-        // ======================== (1.1) UPDATE PENALTY VECTOR
+        // ======================== (1.1) UPDATE PENALTY VECTOR 
 
-        vector<double> s_p_flux(Nfp * NFacesTet);
-        vector<double> s_u_flux(Nfp * NFacesTet);
-        vector<double> s_v_flux(Nfp * NFacesTet);
-        vector<double> s_w_flux(Nfp * NFacesTet);
 
-        for (int f = 0; f < NFacesTet; f++) {
+        int size_flux_vect = Nfp * NFacesTet; // we compute it once!
+        vector<double> s_p_flux(size_flux_vect);
+        vector<double> s_u_flux(size_flux_vect);
+        vector<double> s_v_flux(size_flux_vect);
+        vector<double> s_w_flux(size_flux_vect);
+
+        for (int f = 0; f < NFacesTet; f++) { // boucle sur faces 
 
           // Fetch normal
-          double nx = _nx[k * NFacesTet + f];
-          double ny = _ny[k * NFacesTet + f];
-          double nz = _nz[k * NFacesTet + f];
+          int comp_normal_indx = k * NFacesTet + f;
+          double nx = _nx[comp_normal_indx];
+          double ny = _ny[comp_normal_indx];
+          double nz = _nz[comp_normal_indx];
 
           // Fetch medium parameters
-          int k2 = _EToE[k * NFacesTet + f];
+          int k2 = _EToE[comp_normal_indx];
           double cP = _c[k2];
           double rhoP = _rho[k2];
-          
-          double rho_c = rho * c;
-          double un_sur_rhoPcP = 1. / (rhoP * cP);
-          double rhoPcP_rhoc = rhoP * cP + rho_c;
 
           // Compute penalty terms
-          for (int nf = f * Nfp; nf < (f + 1) * Nfp; nf++) {
+          for (int nf = f * Nfp; nf < (f + 1) * Nfp; nf++) { // boucle sur les points de f
 
             // Index of node in current element
             int n1 = _NfToN[nf];
 
             // Index of node in neighbor element
             int n2 = _mapP[nf + k * NFacesTet * Nfp];
-            int coeff1 = k * Np * Nfields + n1 * Nfields;
 
             // Load values 'minus' corresponding to current element
-            double pM = _valQ[coeff1 + 0];
-            double uM = _valQ[coeff1 + 1];
-            double vM = _valQ[coeff1 + 2];
-            double wM = _valQ[coeff1 + 3];
+            int elem_k = k * Np * Nfields + n1 * Nfields;
+            double pM = _valQ[elem_k + 0];
+            double uM = _valQ[elem_k + 1];
+            double vM = _valQ[elem_k + 2];
+            double wM = _valQ[elem_k + 3];
             double nMdotuM = (nx * uM + ny * vM + nz * wM);
+            // NbOp += 5;
 
+            double coeff_rho_c = rhoP * cP + rho * c;
             if (n2 >= 0) { // ... if there is a neighbor element ...
 
-              int coeff2 = k2 * Np * Nfields + n2 * Nfields;
               // Load values 'plus' corresponding to neighbor element
-              double pP = _valQ[coeff2 + 0];
-              double uP = _valQ[coeff2 + 1];
-              double vP = _valQ[coeff2 + 2];
-              double wP = _valQ[coeff2 + 3];
+              int elem_k2 = k2 * Np * Nfields + n2 * Nfields;
+              double pP = _valQ[elem_k2 + 0];
+              double uP = _valQ[elem_k2 + 1];
+              double vP = _valQ[elem_k2 + 2];
+              double wP = _valQ[elem_k2 + 3];
               double nMdotuP = (nx * uP + ny * vP + nz * wP);
+              // NbOp += 5;
 
               // Penalty terms for interface between two elements
-              s_p_flux[nf] = c / (un_sur_rhoPcP + 1. / (rho_c)) * ((nMdotuP - nMdotuM) - un_sur_rhoPcP * (pP - pM));
-              s_u_flux[nf] = nx * c / (rhoPcP_rhoc) * ((pP - pM) - rhoP * cP * (nMdotuP - nMdotuM));
-              s_v_flux[nf] = ny * c / (rhoPcP_rhoc) * ((pP - pM) - rhoP * cP * (nMdotuP - nMdotuM));
-              s_w_flux[nf] = nz * c / (rhoPcP_rhoc) * ((pP - pM) - rhoP * cP * (nMdotuP - nMdotuM));
-
-            } else {
+              double penalty_term_int = c / coeff_rho_c * ((pP - pM) - rhoP * cP * (nMdotuP - nMdotuM));
+              
+              s_p_flux[nf] = c / (1. / (rhoP * cP) + 1. / (rho * c)) * ((nMdotuP - nMdotuM) - 1. / (rhoP * cP) * (pP - pM));
+              s_u_flux[nf] = nx * penalty_term_int;
+              s_v_flux[nf] = ny * penalty_term_int;
+              s_w_flux[nf] = nz * penalty_term_int;
+              // NbOp += (13+11*3);
+            } else { // conditions limites 
 
               // Homogeneous Dirichlet on 'p'
               double tmp = -2. / (rhoP * cP) * pM;
+              // NbOp += 3;
               // Homogeneous Dirichlet on 'u'
               // double tmp = 2*nMdotuM;
               // ABC
               // double tmp = nMdotuM - 1./(rhoP*cP) * pM;
 
               // Penalty terms for boundary of the domain
-              s_p_flux[nf] = -c / (1. / (rhoP * cP) + 1. / (rho_c)) * tmp;
-              s_u_flux[nf] = nx * c / (rhoPcP_rhoc) * tmp;
-              s_v_flux[nf] = ny * c / (rhoPcP_rhoc) * tmp;
-              s_w_flux[nf] = nz * c / (rhoPcP_rhoc) * tmp;
-            }
-          }
-        }
+              double penalty_term_ext = c / coeff_rho_c * tmp;
+              s_p_flux[nf] = -c / (1. / (rhoP * cP) + 1. / (rho * c)) * tmp;
+              s_u_flux[nf] = nx * penalty_term_ext;
+              s_v_flux[nf] = ny * penalty_term_ext;
+              s_w_flux[nf] = nz * penalty_term_ext;
+              // NbOp += (8+6*3); //* (f + 1) * NFacesTet * K * nLoc * nGlo;
+            } // end if 
+          } // end for nf (nf < (f + 1))
+        } // end for f (f < NFacesTet)
 
         // ======================== (1.2) COMPUTING VOLUME TERMS
+        // calcul des dérivées spatiales 
 
         // Load geometric factors
         double rx = _rstxyz[k * 9 + 0];
@@ -300,18 +315,21 @@ int main(int argc, char **argv) {
         vector<double> s_v(Np);
         vector<double> s_w(Np);
         for (int n = 0; n < Np; ++n) {
-          int coeff3 = k * Np * Nfields + n * Nfields;
-          s_p[n] = _valQ[coeff3 + 0];
-          s_u[n] = _valQ[coeff3 + 1];
-          s_v[n] = _valQ[coeff3 + 2];
-          s_w[n] = _valQ[coeff3 + 3];
-        }
+          
+          int vol_ter = Nfields * (k * Np + n); // we just compute it once!
+          s_p[n] = _valQ[vol_ter + 0];
+          s_u[n] = _valQ[vol_ter + 1];
+          s_v[n] = _valQ[vol_ter + 2];
+          s_w[n] = _valQ[vol_ter + 3];
+        } // end for n (n < Np)
+
         // Compute mat-vec product for surface term
         for (int n = 0; n < Np; ++n) {
           double dpdr = 0, dpds = 0, dpdt = 0;
           double dudr = 0, duds = 0, dudt = 0;
           double dvdr = 0, dvds = 0, dvdt = 0;
           double dwdr = 0, dwds = 0, dwdt = 0;
+          
           for (int m = 0; m < Np; ++m) {
             double Dr = _Dr[n + m * Np];
             dpdr += Dr * s_p[m];
@@ -328,7 +346,9 @@ int main(int argc, char **argv) {
             dudt += Dt * s_u[m];
             dvdt += Dt * s_v[m];
             dwdt += Dt * s_w[m];
-          }
+            
+            // NbOp += 8*3;
+          } // end for m (m < Np)
 
           double dpdx = rx * dpdr + sx * dpds + tx * dpdt;
           double dpdy = ry * dpdr + sy * dpds + ty * dpdt;
@@ -337,15 +357,20 @@ int main(int argc, char **argv) {
           double dvdy = ry * dvdr + sy * dvds + ty * dvdt;
           double dwdz = rz * dwdr + sz * dwds + tz * dwdt;
           double divU = dudx + dvdy + dwdz;
+
+          // NbOp += 5*5 + 2;
+
           // Compute RHS (only part corresponding to volume terms)
-          int coeff4 = k * Np * Nfields + n * Nfields;
-          _rhsQ[coeff4 + 0] = -c * c * rho * divU;
-          _rhsQ[coeff4 + 1] = -1. / rho * dpdx;
-          _rhsQ[coeff4 + 2] = -1. / rho * dpdy;
-          _rhsQ[coeff4 + 3] = -1. / rho * dpdz;
-        }
+          int vol_ter = Nfields * (k * Np + n); // we just compute it once!
+          _rhsQ[vol_ter + 0] = -c * c * rho * divU;
+          _rhsQ[vol_ter + 1] = -1. / rho * dpdx;
+          _rhsQ[vol_ter + 2] = -1. / rho * dpdy;
+          _rhsQ[vol_ter + 3] = -1. / rho * dpdz;
+          // NbOp += 3 + 2*3;
+        } // end for n (n < Np)
 
         // ======================== (1.3) COMPUTING SURFACE TERMS
+        // opérateur lift
 
         for (int n = 0; n < Np; ++n) {
           for (int f = 0; f < NFacesTet; f++) {
@@ -355,74 +380,85 @@ int main(int argc, char **argv) {
             double u_lift = 0.;
             double v_lift = 0.;
             double w_lift = 0.;
+
             for (int m = f * Nfp; m < (f + 1) * Nfp; m++) {
               double tmp = _LIFT[n * NFacesTet * Nfp + m];
-              p_lift += tmp * s_p_flux[m];
+              p_lift += tmp * s_p_flux[m]; 
               u_lift += tmp * s_u_flux[m];
               v_lift += tmp * s_v_flux[m];
               w_lift += tmp * s_w_flux[m];
-            }
+              // NbOp +=8;
+            } // end for m  (m < (f + 1))
 
             // Load geometric factor
             double Fscale = _Fscale[k * NFacesTet + f];
 
             // Update RHS (with part corresponding to surface terms)
-            int coeff5 = k * Np * Nfields + n * Nfields;
-            _rhsQ[coeff5 + 0] -= p_lift * Fscale;
-            _rhsQ[coeff5 + 1] -= u_lift * Fscale;
-            _rhsQ[coeff5 + 2] -= v_lift * Fscale;
-            _rhsQ[coeff5 + 3] -= w_lift * Fscale;
-          }
-        }
-      }
+            int elem_k = k * Np * Nfields + n * Nfields;
+            _rhsQ[elem_k + 0] -= p_lift * Fscale;
+            _rhsQ[elem_k + 1] -= u_lift * Fscale;
+            _rhsQ[elem_k + 2] -= v_lift * Fscale;
+            _rhsQ[elem_k + 3] -= w_lift * Fscale;
+            // NbOp += 8;
+          } // end for f (f < NFacesTet)
+        } // end for n (n < Np)
+      } // end for k (k < K)
 
+      // fin RHS update
       // ======================== (2) UPDATE RESIDUAL + FIELDS
+
+      #pragma omp parallel for schedule(static)
 
       for (int k = 0; k < K; ++k) {
         for (int n = 0; n < Np; ++n) {
           for (int iField = 0; iField < Nfields; ++iField) {
-            int id = k * Np * Nfields + n * Nfields + iField;
+            int id = k * Np * Nfields + n * Nfields + iField; // 5 opérations il y en a qu'on peut éviter!
+
             _resQ[id] = a * _resQ[id] + dt * _rhsQ[id];
             _valQ[id] = _valQ[id] + b * _resQ[id];
-          }
-        }
-      }
-    }
+            // NbOp += 3 + 2;
+          } // end for iField (iField < Nfields)
+        } // end for n (n < Np)
+      } // end for k (k < K)
+    } // end for nLoc (nLoc < 5)
 
+    double timeEnd = dsecnd(); // time 
+    double duration = timeEnd - timeBegin;
+    duration_tot += duration;
+    // cout << "dsecnd" << timeEnd - timeBegin << endl;
 
-    double time_end = dsecnd();
-    average += time_end - time_begin;
-    //cout << "Temps d'exécution maximal: " << time << "secondes. Itérations:" << nGlo << endl;
     // Export solution
     if ((iOutputGmsh > 0) && ((nGlo + 1) % iOutputGmsh == 0))
-      exportSolGmsh(N, _r, _s, _t, _EMsh, nGlo + 1, runTime + dt, _valQ);
-      
-  }
+      // exportSolGmsh(N, _r, _s, _t, _EMsh, nGlo + 1, runTime + dt, _valQ);
+      exportSolGmsh(N, _r, _s, _t, _EMsh, nGlo + 1, duration, _valQ);
+    
+    // if (nGlo % 100 == 0) {
+    //   cout << "iter : " << nGlo << endl;
+    //   // cout << "FLOP : " << NbOp << endl;
+    // }
+    } // end for nGlo (nGlo < Nsteps)
 
-
+  
   // Temps d'exécution moyen par itérations, temps total d'exécution
-  double time_total_end = dsecnd();
-  double time_total = time_total_end - time_total_begin;
-  average /= Nsteps;
-  //double alpha = Nsteps*5*K* ((NFacesTet+1)*Nfp*80 + Np*Np*60 + Np*NFacesTet*8*(1 + (NFacesTet+1)*Nfp) + Np*Nfields*5);
+  
+  double average = duration_tot/Nsteps;
+  
   double flops_par_iter = 1600.0 + 68.0*Np;
   double total_flops = 5.0 * Nsteps * K * flops_par_iter;
-  double gflops = total_flops/(time_total*1e9);
-  cout << "Temps d'exécution moyen d'une itération: " << average << " secondes." << endl;
-  cout << "Temps d'exécution total: " << time_total << " secondes." << endl;
-  cout << "Performance arithmétique: " << gflops << " GFLOP/s." << endl;;
+  double gflops = total_flops/(duration_tot*1e9);
+  //                         Nsteps           DOF                        Ttot                   Tmoy           GFLOP
+  cout << fixed << setprecision(6) << Nsteps << " " << K * Np * Nfields << " " << duration_tot << " " << average << " " << gflops << endl;
+  // cout << Nsteps * K * (N^6 + N^5 * NFacesTet + N^3 * Nfields)/(duration_tot*1e9) << endl;
 
   // ======================================================================
   // 3) Post-processing
-  // ======================================================================*
+  // ======================================================================
+  // cout << "Duration totale : " << duration_tot << endl;
 
-
-  
-  cout << "Degré des Polynômes: " << N << endl;
-  cout << "OutputStep: " << iOutputGmsh << endl;
   // Export final solution
-  if (iOutputGmsh > 0)
+  if (iOutputGmsh > 0){
     exportSolGmsh(N, _r, _s, _t, _EMsh, Nsteps, Nsteps * dt, _valQ);
+  }
 
   return 0;
 }
