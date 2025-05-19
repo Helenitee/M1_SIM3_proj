@@ -1,3 +1,4 @@
+// compilation : make
 #include "Connectivity.hpp"
 #include "Gmsh.hpp"
 #include "Nodes.hpp"
@@ -412,6 +413,7 @@ int main(int argc, char **argv) {
   double flops_par_iter = 1600.0 + 68.0*Np;
   double total_flops = 5.0 * Nsteps * K * flops_par_iter;
   double gflops = total_flops/(time_total*1e9);
+  cout << endl;
   cout << "Temps d'exécution moyen d'une itération: " << average << " secondes." << endl;
   cout << "Temps d'exécution total: " << time_total << " secondes." << endl;
   cout << "Performance arithmétique: " << gflops << " GFLOP/s." << endl;;
@@ -421,14 +423,14 @@ int main(int argc, char **argv) {
   // ======================================================================*
 
 
-  
   cout << "Degré des Polynômes: " << N << endl;
   cout << "OutputStep: " << iOutputGmsh << endl;
   // Export final solution
-  if (iOutputGmsh > 0)
-    exportSolGmsh(N, _r, _s, _t, _EMsh, Nsteps, Nsteps * dt, _valQ);
+  // if (iOutputGmsh > 0)
+  //   exportSolGmsh(N, _r, _s, _t, _EMsh, Nsteps, Nsteps * dt, _valQ);
   
-    cout << fixed << setprecision(6) << Nsteps << " " << K * Np * Nfields << " " << time_total << " " << average << " " << gflops << endl;
+  cout << "Nstep DOF     Ttot     Tmoy     GFLP" << endl;
+  cout << fixed << setprecision(6) << Nsteps << " " << K * Np * Nfields << " " << time_total << " " << average << " " << gflops << endl;
 
   return 0;
 }
