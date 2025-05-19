@@ -427,6 +427,8 @@ int main(int argc, char **argv) {
   // Export final solution
   if (iOutputGmsh > 0)
     exportSolGmsh(N, _r, _s, _t, _EMsh, Nsteps, Nsteps * dt, _valQ);
+  
+    cout << fixed << setprecision(6) << Nsteps << " " << K * Np * Nfields << " " << time_total << " " << average << " " << gflops << endl;
 
   return 0;
 }
