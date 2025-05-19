@@ -53,8 +53,8 @@ begin
         xaxis = ("Polynomial Degree", font(10)),
         xticks=(1:1:7),
         minorgrid = true)
-    plot!(mesh, GFLP2,
-        label = "Pre-calculated",
+    plot!(mesh, GFLP3,
+        label = "Optimized",
         marker = :point,
         lw = 2)
 end
@@ -72,11 +72,11 @@ begin
         xticks=(1:1:7),
         minorgrid = true)
     plot!(mesh, Ttot3,
-        label = "Pre-calculated",
+        label = "Optimized",
         marker = :point
     )
 end
-savefig("figures/perf2tot_comparaison.pdf")
+savefig("figures/perf3tot_comparaison.pdf")
 begin
     plot(mesh,Tmoy, 
         title = "Average runtime per iteration as a function of the Polynomial Degree",
@@ -88,8 +88,8 @@ begin
         xaxis = ("Polynomial Degree", font(10)),
         xticks=(1:1:7),
         minorgrid = true)
-    plot!(mesh, Tmoy2,
-        label = "Pre-calculated",
+    plot!(mesh, Tmoy3,
+        label = "Optimized",
         marker = :point)
 end
-savefig("figures/perf2Tmoy_comparaison.pdf")
+savefig("figures/perf3Tmoy_comparaison.pdf")
