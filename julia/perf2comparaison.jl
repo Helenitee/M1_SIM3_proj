@@ -19,14 +19,6 @@ data2 = [7 2211 228480 285.653  0.129196 0.179795;
         1 580  244288 23.616 0.0407171 3.50978]
 
 
-data3 = [7 2211 228480 98.8643 0.0447147 0.519489;
-        6 2123 253344 72.4571 0.0341295 0.807694;
-        5 1719 251328 44.0247 0.0256106 1.18462;
-        4 1833 258300 37.245 0.0203191 1.80694;
-        3 1238 256880 19.5067 0.0157565 3.01605;
-        2 877  242640 11.0512 0.012601 5.48778;
-        1 580  24428 8.1527 0.0140563 10.1668]
-
 mesh   = @view data[:,1]
 Nsteps = @view data[:,2]
 DOF    = @view data[:,3]
@@ -37,11 +29,6 @@ GFLP   = @view data[:,6]
 Ttot2   = @view data2[:,4]
 Tmoy2   = @view data2[:,5]
 GFLP2   = @view data2[:,6]
-
-
-Ttot3 = @view data3[:,4]
-Tmoy3 = @view data3[:,5]
-GFLP3 = @view data3[:,6]
 
 begin
     plot(mesh,GFLP,
@@ -59,7 +46,7 @@ begin
         marker = :point,
         lw = 2)
 end
-savefig("figures/perf3GFLOP_comparaison.pdf")
+savefig("figures/perf2GFLOP_comparaison.pdf")
 
 begin
     plot(mesh,Ttot,
@@ -72,7 +59,7 @@ begin
         xaxis = ("Polynomial Degree", font(10)),
         xticks=(1:1:7),
         minorgrid = true)
-    plot!(mesh, Ttot3,
+    plot!(mesh, Ttot2,
         label = "Pre-calculated",
         marker = :point
     )
