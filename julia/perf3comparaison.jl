@@ -1,4 +1,5 @@
 using Plots
+# Comparaison code Optimisé vs Non Optimisé
 #       mesh Nsteps DOF Ttot Tmoy GFLP
 data = [7 2211 228480 291.24  0.128446 0.176346;
         6 2123 253344 206.039 0.0954487 0.284039;
