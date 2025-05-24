@@ -46,8 +46,8 @@ begin
         label = "Tmoy no paral", 
         marker = :point,
         lw = 2,
-        yaxis = ("time", font(10)),
-        xaxis = ("polyomial degree", font(10)),
+        yaxis = ("Temps (s)", font(10)),
+        xaxis = ("Degré Polynomial", font(10)),
         xticks=(1:1:7),
         # ytricks = log2,
         minorgrid = true)
@@ -62,8 +62,8 @@ begin
         label = "Ttot no paral", 
         marker = :point,
         lw = 2,
-        yaxis = ("time", font(10)),
-        xaxis = ("polyomial degree", font(10)),
+        yaxis = ("Temps (s)", font(10)),
+        xaxis = ("Degré Polynomial", font(10)),
         xticks=(1:1:7),
         # ytricks = log2,
         minorgrid = true)
@@ -78,8 +78,8 @@ begin
         label = "GFLOP/s no paral", 
         marker = :point,
         lw = 2,
-        yaxis = ("time", font(10)),
-        xaxis = ("polyomial degree", font(10)),
+        yaxis = ("Temps (s)", font(10)),
+        xaxis = ("Degré Polynomial", font(10)),
         xticks=(1:1:7),
         # ytricks = log2,
         minorgrid = true)

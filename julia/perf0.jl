@@ -25,7 +25,7 @@ begin
         marker = :point,
         lw = 2,
         yaxis = ("GFLOP/s", font(10)),
-        xaxis = ("Polynomial Degree", font(10)),
+        xaxis = ("Degré Polynomial", font(10)),
         xticks=(1:1:7),
         minorgrid = true)
 end
@@ -38,8 +38,8 @@ begin
         label = "",
         marker = :point,
         lw = 2,
-        yaxis = ("Time (s)", font(10)),
-        xaxis = ("Polynomial Degree", font(10)),
+        yaxis = ("Temps (s)", font(10)),
+        xaxis = ("Degré Polynomial", font(10)),
         xticks=(1:1:7),
         minorgrid = true)
 end
@@ -52,8 +52,8 @@ begin
         label = "",
         marker = :point,
         lw = 2,
-        yaxis = ("Time (s)", font(10)),
-        xaxis = ("Polynomial Degree", font(10)),
+        yaxis = ("Temps (s)", font(10)),
+        xaxis = ("Degré Polynomial", font(10)),
         xticks=(1:1:7),
         minorgrid = true)
 end

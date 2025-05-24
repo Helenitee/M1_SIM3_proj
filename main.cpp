@@ -253,10 +253,9 @@ int main(int argc, char **argv) {
             double uM = _valQ[elem_k + 1];
             double vM = _valQ[elem_k + 2];
             double wM = _valQ[elem_k + 3];
-            double nMdotuM = (nx * uM + ny * vM + nz * wM);
-            // NbOp += 5;
+            double nMdotuM = (nx * uM + ny * vM + nz * wM); // NbOp += 5;
 
-            double coeff_rho_c = rhoP * cP + rho * c;
+            double coeff_rho_c = rhoP * cP + rho * c; // NbOP += 3
             if (n2 >= 0) { // ... if there is a neighbor element ...
 
               // Load values 'plus' corresponding to neighbor element
@@ -266,7 +265,6 @@ int main(int argc, char **argv) {
               double vP = _valQ[elem_k2 + 2];
               double wP = _valQ[elem_k2 + 3];
               double nMdotuP = (nx * uP + ny * vP + nz * wP);
-              // NbOp += 5;
 
               // Penalty terms for interface between two elements
               double penalty_term_int = c / coeff_rho_c * ((pP - pM) - rhoP * cP * (nMdotuP - nMdotuM));
@@ -274,8 +272,7 @@ int main(int argc, char **argv) {
               s_p_flux[nf] = c / (1. / (rhoP * cP) + 1. / (rho * c)) * ((nMdotuP - nMdotuM) - 1. / (rhoP * cP) * (pP - pM));
               s_u_flux[nf] = nx * penalty_term_int;
               s_v_flux[nf] = ny * penalty_term_int;
-              s_w_flux[nf] = nz * penalty_term_int;
-              // NbOp += (13+11*3);
+              s_w_flux[nf] = nz * penalty_term_int; 
             } else { // conditions limites 
 
               // Homogeneous Dirichlet on 'p'
@@ -338,16 +335,21 @@ int main(int argc, char **argv) {
           double dpdx = rx * dpdr + sx * dpds + tx * dpdt;
           double dpdy = ry * dpdr + sy * dpds + ty * dpdt;
           double dpdz = rz * dpdr + sz * dpds + tz * dpdt;
+          // NbOp += 9
           double dudx = rx * dudr + sx * duds + tx * dudt;
           double dvdy = ry * dvdr + sy * dvds + ty * dvdt;
           double dwdz = rz * dwdr + sz * dwds + tz * dwdt;
+          // NbOp += 9
           double divU = dudx + dvdy + dwdz;
+          // NbOp += 2
+
           // Compute RHS (only part corresponding to volume terms)
           int vol_ter = Nfields * (k * Np + n);
           _rhsQ[vol_ter + 0] = -c * c * rho * divU;
           _rhsQ[vol_ter + 1] = -1. / rho * dpdx;
           _rhsQ[vol_ter + 2] = -1. / rho * dpdy;
           _rhsQ[vol_ter + 3] = -1. / rho * dpdz;
+          // NbOp += 3 * 2 + 3
         }
 
         // ======================== (1.3) COMPUTING SURFACE TERMS
@@ -366,6 +368,7 @@ int main(int argc, char **argv) {
               u_lift += tmp * s_u_flux[m];
               v_lift += tmp * s_v_flux[m];
               w_lift += tmp * s_w_flux[m];
+              // NbOp += 8
             }
 
             // Load geometric factor
@@ -387,8 +390,8 @@ int main(int argc, char **argv) {
         for (int n = 0; n < Np; ++n) {
           for (int iField = 0; iField < Nfields; ++iField) {
             int id = k * Np * Nfields + n * Nfields + iField;
-            _resQ[id] = a * _resQ[id] + dt * _rhsQ[id];
-            _valQ[id] = _valQ[id] + b * _resQ[id];
+            _resQ[id] = a * _resQ[id] + dt * _rhsQ[id]; // NbOp += 3
+            _valQ[id] = _valQ[id] + b * _resQ[id]; // NbOp += 2
           }
         }
       }
@@ -409,9 +412,7 @@ int main(int argc, char **argv) {
   double time_total_end = dsecnd();
   double time_total = time_total_end - time_total_begin;
   average /= Nsteps;
-  //double alpha = Nsteps*5*K* ((NFacesTet+1)*Nfp*80 + Np*Np*60 + Np*NFacesTet*8*(1 + (NFacesTet+1)*Nfp) + Np*Nfields*5);
-  double flops_par_iter = 1600.0 + 68.0*Np;
-  double total_flops = 5.0 * Nsteps * K * flops_par_iter;
+  double total_flops = 5 * K * (20* Nfp + (8 * Nfp + 42) * Np + 20 * Np^2)
   double gflops = total_flops/(time_total*1e9);
   cout << endl;
   cout << "Temps d'exécution moyen d'une itération: " << average << " secondes." << endl;
